@@ -28,18 +28,21 @@ namespace fsim {
             float *Vz0      = grid->Vz0;
             float *dye      = grid->dye;
 
+            // first part of the velocity equation
             diffuse(X_AXIS, Vx0, Vx, viscosity);
             diffuse(Y_AXIS, Vy0, Vy, viscosity);
             diffuse(Z_AXIS, Vz0, Vz, viscosity);
 
             project(Vx0, Vy0, Vz0, Vx, Vy);
 
+            // second part of the velocity equation
             advect(X_AXIS, Vx, Vx0, Vx0, Vy0, Vz0);
             advect(Y_AXIS, Vy, Vy0, Vx0, Vy0, Vz0);
             advect(Z_AXIS, Vz, Vz0, Vx0, Vy0, Vz0);
 
             project(Vx, Vy, Vz, Vx0, Vy0);
 
+            // density equation
             diffuse(SCALAR, dye, density, diffusion);
             advect(SCALAR, density, dye, Vx, Vy, Vz);
         }
@@ -71,9 +74,9 @@ namespace fsim {
             int N = grid->size;
             int iters = GRID_BASED_ITER;
 
-            for (int k = 1; k < N - 1; k++) {
-                for (int j = 1; j < N - 1; j++) {
-                    for (int i = 1; i < N - 1; i++) {
+            for (int k = 1; k < N-1; k++) {
+                for (int j = 1; j < N-1; j++) {
+                    for (int i = 1; i < N-1; i++) {
                         divergence[grid->indexOf(i, j, k)] = -0.5f * (
                                  Vx[grid->indexOf(i+1, j,   k  )]
                                 -Vx[grid->indexOf(i-1, j,   k  )]
@@ -91,9 +94,9 @@ namespace fsim {
             setBounds(SCALAR, pressure, N);
             gaussSeidel(SCALAR, pressure, divergence, 1, 6, iters, N);
 
-            for (int k = 1; k < N - 1; k++) {
-                for (int j = 1; j < N - 1; j++) {
-                    for (int i = 1; i < N - 1; i++) {
+            for (int k = 1; k < N-1; k++) {
+                for (int j = 1; j < N-1; j++) {
+                    for (int i = 1; i < N-1; i++) {
                         Vx[grid->indexOf(i, j, k)] -= 0.5f * (pressure[grid->indexOf(i+1, j, k)]
                                                              - pressure[grid->indexOf(i-1, j, k)]) * N;
                         Vy[grid->indexOf(i, j, k)] -= 0.5f * (pressure[grid->indexOf(i, j+1, k)]
@@ -126,9 +129,9 @@ namespace fsim {
             float dtz   = dt * (N - 2);
 
             float ifloat, jfloat, kfloat;
-            for (int k = 1, kfloat = 1; k < N - 1; k++, kfloat++) {
-                for (int j = 1, jfloat = 1; j < N - 1; j++, jfloat++) {
-                    for (int i = 1, ifloat = 1; i < N - 1; i++, ifloat++) {
+            for (int k = 1, kfloat = 1; k < N-1; k++, kfloat++) {
+                for (int j = 1, jfloat = 1; j < N-1; j++, jfloat++) {
+                    for (int i = 1, ifloat = 1; i < N-1; i++, ifloat++) {
                         float x = ifloat - dtx * Vx[grid->indexOf(i, j, k)];
                         float y = jfloat - dty * Vy[grid->indexOf(i, j, k)];
                         float z = kfloat - dtz * Vz[grid->indexOf(i, j, k)];
@@ -174,11 +177,10 @@ namespace fsim {
             int iters,
             int N
         ) {
-            float cRecip = 1.0f / normalization;
             runForNSteps(iters) {
-                for (int m = 1; m < N - 1; m++) {
-                    for (int j = 1; j < N - 1; j++) {
-                        for (int i = 1; i < N - 1; i++) {
+                for (int m = 1; m < N-1; m++) {
+                    for (int j = 1; j < N-1; j++) {
+                        for (int i = 1; i < N-1; i++) {
                             field[grid->indexOf(i, j, m)] =
                                 (field_prev[grid->indexOf(i, j, m)]
                                     + coeff * (field[grid->indexOf(i+1, j, m )] + 
@@ -187,7 +189,7 @@ namespace fsim {
                                            field[grid->indexOf(i, j-1, m)] +
                                            field[grid->indexOf(i, j, m+1)] + 
                                            field[grid->indexOf(i, j, m-1)]
-                                )) * cRecip;
+                                )) * 1.0f / normalization;
                         }
                     }
                 }
@@ -201,8 +203,8 @@ namespace fsim {
             float *field, 
             int N
         ) {
-            for (int j = 1; j < N - 1; j++) {
-                for (int i = 1; i < N - 1; i++) {
+            for (int j = 1; j < N-1; j++) {
+                for (int i = 1; i < N-1; i++) {
                     field[grid->indexOf(i, j, 0)] =
                         axis == 3 ? -field[grid->indexOf(i, j, 1)] 
                         : field[grid->indexOf(i, j, 1)];
@@ -212,20 +214,20 @@ namespace fsim {
                 }
             }
 
-            for (int k = 1; k < N - 1; k++) {
-                for (int i = 1; i < N - 1; i++) {
+            for (int k = 1; k < N-1; k++) {
+                for (int i = 1; i < N-1; i++) {
                     field[grid->indexOf(i, 0, k)] = 
                         axis == 2 ? -field[grid->indexOf(i, 1, k)] 
-                        : field[grid->indexOf(i, 1  , k)];
+                        : field[grid->indexOf(i, 1, k)];
                     field[grid->indexOf(i, N-1, k)] = 
                         axis == 2 ? -field[grid->indexOf(i, N-2, k)] 
                         : field[grid->indexOf(i, N-2, k)];
                 }
             }
 
-            for (int k = 1; k < N - 1; k++) {
-                for (int j = 1; j < N - 1; j++) {
-                    field[grid->indexOf(0  , j, k)] = 
+            for (int k = 1; k < N-1; k++) {
+                for (int j = 1; j < N-1; j++) {
+                    field[grid->indexOf(0, j, k)] = 
                         axis == 1 ? -field[grid->indexOf(1, j, k)] 
                         : field[grid->indexOf(1, j, k)];
                     field[grid->indexOf(N-1, j, k)] = 
@@ -243,7 +245,7 @@ namespace fsim {
                                         + field[grid->indexOf(0, N-1, 1)]);
             field[grid->indexOf(0, 0, N-1)] = 0.33f * (field[grid->indexOf(1, 0, N-1)]
                                         + field[grid->indexOf(0, 1, N-1)]
-                                        + field[grid->indexOf(0, 0, N)]);
+                                        + field[grid->indexOf(0, 0, N-2)]);
 
             field[grid->indexOf(0, N-1, N-1)] = 0.33f * (field[grid->indexOf(1, N-1, N-1)]
                                         + field[grid->indexOf(0, N-2, N-1)]
