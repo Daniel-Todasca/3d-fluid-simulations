@@ -8,18 +8,17 @@ namespace fsim {
     class FluidCube {
 
     public:
-        void addDensity(int x, int y, int z, float amount) {
-            density[indexOf(x, y, z)] += amount;
+        void addDensity(int x, int y, float amount) {
+            density[indexOf(x, y)] += amount;
         }
 
-        void addVelocity(int x, int y, int z, float vx, float vy, float vz) {
-            Vx[indexOf(x, y, z)] += vx;
-            Vy[indexOf(x, y, z)] += vy;
-            Vz[indexOf(x, y, z)] += vz;
+        void addVelocity(int x, int y, float vx, float vy) {
+            Vx[indexOf(x, y)] += vx;
+            Vy[indexOf(x, y)] += vy;
         }
 
-        inline int indexOf(int x, int y, int z) {
-            return x + y*size + z*size*size;
+        inline int indexOf(int x, int y) {
+            return x + y*size;
         }
 
     public:        
@@ -32,8 +31,8 @@ namespace fsim {
         float *dye;          
         float *density;             // density array
 
-        float *Vx, *Vy, *Vz;        // velocity array
-        float *Vx0, *Vy0, *Vz0;     // previous velocity array
+        float *Vx, *Vy;             // velocity
+        float *Vx0, *Vy0;           // previous velocity
 
         FluidCube() : FluidCube(
             CUBE_SIZE_DEFAULT,
@@ -54,16 +53,14 @@ namespace fsim {
             this->time_step = time_step;
 
             int N   = size;
-            int N3  = N*N*N;
+            int N2  = N*N;
 
-            dye     = makeFloatArray(N3);
-            density = makeFloatArray(N3);
-            Vx      = makeFloatArray(N3);
-            Vy      = makeFloatArray(N3);
-            Vz      = makeFloatArray(N3);
-            Vx0     = makeFloatArray(N3);
-            Vy0     = makeFloatArray(N3);
-            Vz0     = makeFloatArray(N3);
+            dye     = makeFloatArray(N2);
+            density = makeFloatArray(N2);
+            Vx      = makeFloatArray(N2);
+            Vy      = makeFloatArray(N2);
+            Vx0     = makeFloatArray(N2);
+            Vy0     = makeFloatArray(N2);
         }
 
         ~FluidCube() {
@@ -71,10 +68,8 @@ namespace fsim {
             deleteFloatArray(density);
             deleteFloatArray(Vx);
             deleteFloatArray(Vy);
-            deleteFloatArray(Vz);
             deleteFloatArray(Vx0);
             deleteFloatArray(Vy0);
-            deleteFloatArray(Vz0);
         }
 
     };

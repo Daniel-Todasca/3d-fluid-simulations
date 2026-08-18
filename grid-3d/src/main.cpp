@@ -27,8 +27,8 @@ int main() {
         std::cout << '\n';
     }
 
-    std::cout << "\nCenter density  : " << cube->density[cube->indexOf(cx, cy, cz)] << '\n';
-    std::cout << "Center velocity : ("
+    std::cout << "\nCenter density: " << cube->density[cube->indexOf(cx, cy, cz)] << '\n';
+    std::cout << "Center velocity: ("
               << cube->Vx[cube->indexOf(cx, cy, cz)] << ", "
               << cube->Vy[cube->indexOf(cx, cy, cz)] << ", "
               << cube->Vz[cube->indexOf(cx, cy, cz)] << ")\n";
