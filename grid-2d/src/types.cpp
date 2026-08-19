@@ -2,6 +2,7 @@
 
 #include "macros.cpp"
 #include "constants.cpp"
+#include "maths.cpp"
 
 namespace fsim {
     
@@ -10,6 +11,17 @@ namespace fsim {
     public:
         void addDensity(int x, int y, float amount) {
             density[indexOf(x, y)] += amount;
+        }
+
+        void addDensityToCircle(int x, int y, float radius, float amount) {
+            int N = size;
+            for (int x2 = 1; x2 < N-1; x2++) {
+                for (int y2 = 1; y2 < N-1; y2++) {
+                    float distance = fsim::distance((float) x, (float) y, (float) x2, (float) y2);
+                    if (distance > radius) continue;
+                    density[indexOf(x2, y2)] += amount / (1.0f + distance);
+                }
+            }
         }
 
         void addVelocity(int x, int y, float vx, float vy) {

@@ -43,6 +43,10 @@ namespace fsim {
             advect(SCALAR, density, dye, Vx, Vy);
         }
 
+        FluidCube *getGrid() {
+            return grid;
+        }
+
     private:
         FluidCube *grid;
 

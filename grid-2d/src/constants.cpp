@@ -1,10 +1,8 @@
 #pragma once
 
-#define CUBE_SIZE_DEFAULT       16
+#define CUBE_SIZE_DEFAULT       64
 #define CUBE_DIFFUSION_DEFAULT  0.0001f
 #define CUBE_VISCOSITY_DEFAULT  0.0001f
 #define CUBE_TIMESTEP_DEFAULT   0.01f
 
 #define GRID_BASED_ITER         4
-
-
