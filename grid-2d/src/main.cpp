@@ -7,29 +7,13 @@
 #include "simulation.cpp"
 
 int main() {
-    int N = 16;
+    int N = CUBE_SIZE_DEFAULT;
 
-    fsim::FluidCube *cube = new fsim::FluidCube(N, 0.0f, 0.0f, 0.03f);
+    fsim::FluidCube *cube = new fsim::FluidCube();
     fsim::GridSimulation2d *sim = new fsim::GridSimulation2d(cube);
-
-    for (int i = 0; i < N*N; i++) {
-        cube->dye[i] = 0;
-        cube->density[i] = 0;
-        cube->Vx[i] = 0;
-        cube->Vy[i] = 0;
-        cube->Vx0[i] = 0;
-        cube->Vy0[i] = 0;
-    }
 
     int cx = cube->size / 2;
     int cy = cube->size / 2;
-
-    cube->addDensity(cx, cy, 10000.0f);
-    cube->addVelocity(cx, cy, 0.0f, 20.0f);
-
-    runForNSteps(10) {
-        sim->step();
-    }
 
     for (int y = 0; y < cube->size; y++) {
         for (int x = 0; x < cube->size; x++) {
@@ -61,8 +45,36 @@ int main() {
     glClear(GL_COLOR_BUFFER_BIT);
     glfwMakeContextCurrent(window);
 
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            float distance = sqrt((cx-i) * (cx-i) + (cy-j) * (cy-j));
+            if (distance > 2) continue;
+            cube->addDensity(i, j, 2.0f / (1.0f + distance));
+        }
+    }
+    
+    for (int i = 0; i< N/2; i++) {
+        cube->addVelocity(N/2, 3*N/4-i, 0, 1.0f * CUBE_TIMESTEP_DEFAULT);
+    }
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                float distance = sqrt((cx-i) * (cx-i) + (cy-j) * (cy-j));
+                if (distance > 2) continue;
+                cube->addDensity(i, j, 0.01f * CUBE_TIMESTEP_DEFAULT / (1.0f + distance));
+            }
+        }
+    
+        for (int i = 0; i < N/2; i++) {
+            cube->addVelocity(3*N/4, 3*N/4-i, 0, 0.001f * CUBE_TIMESTEP_DEFAULT);
+        }
+    
+        for (int i = 0; i < N/2; i++) {
+            cube->addVelocity(N/4, N/4-i, 0, -0.001f * CUBE_TIMESTEP_DEFAULT);
+        }
 
         sim->step();
     
@@ -72,11 +84,15 @@ int main() {
         float heightPx = 2.0f / cube->size;
 
         glBegin(GL_QUADS);
+        
+        for (int i = 0; i < N/2; i++) {
+            cube->addVelocity(N/2, 3*N/4-i, 0, 0.001f * CUBE_TIMESTEP_DEFAULT);
+        }
 
         for (int y = 0; y < cube->size; ++y) {
             for (int x = 0; x < cube->size; ++x) {
                 float density = cube->density[cube->indexOf(x, y)];
-                float brightness = std::clamp(density / 100.0f, 0.0f, 1.0f);
+                float brightness = std::clamp(density / 1.0f, 0.0f, 1.0f);
 
                 glColor3f(brightness, brightness, brightness);
 

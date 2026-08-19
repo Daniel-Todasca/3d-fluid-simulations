@@ -123,13 +123,13 @@ namespace fsim {
             int N       = grid->size;
             float dt    = grid->time_step;
 
-            float Nf    = N;
+            float Nf    = N - 2;
             float dtx   = dt * (N - 2);
             float dty   = dt * (N - 2);
             float dtz   = dt * (N - 2);
 
             for (int k = 1; k < N-1; k++) {
-                for (int j = 11; j < N-1; j++) {
+                for (int j = 1; j < N-1; j++) {
                     for (int i = 1; i < N-1; i++) {
                         float x = ((float) i) - dtx * Vx[grid->indexOf(i, j, k)];
                         float y = ((float) j) - dty * Vy[grid->indexOf(i, j, k)];
@@ -235,32 +235,32 @@ namespace fsim {
                 }
             }
             
-            field[grid->indexOf(0, 0, 0)] = 0.33f * (field[grid->indexOf(1, 0, 0)] +
+            field[grid->indexOf(0, 0, 0)] = 1.0f / 3.0f * (field[grid->indexOf(1, 0, 0)] +
                                         field[grid->indexOf(0, 1, 0)] +
                                         field[grid->indexOf(0, 0, 1)]);
 
-            field[grid->indexOf(0, N-1, 0)] = 0.33f * (field[grid->indexOf(1, N-1, 0)] +
+            field[grid->indexOf(0, N-1, 0)] = 1.0f / 3.0f * (field[grid->indexOf(1, N-1, 0)] +
                                         field[grid->indexOf(0, N-2, 0)] +
                                         field[grid->indexOf(0, N-1, 1)]);
-            field[grid->indexOf(0, 0, N-1)] = 0.33f * (field[grid->indexOf(1, 0, N-1)] +
+            field[grid->indexOf(0, 0, N-1)] = 1.0f / 3.0f * (field[grid->indexOf(1, 0, N-1)] +
                                         field[grid->indexOf(0, 1, N-1)] +
                                         field[grid->indexOf(0, 0, N-2)]);
 
-            field[grid->indexOf(0, N-1, N-1)] = 0.33f * (field[grid->indexOf(1, N-1, N-1)] +
+            field[grid->indexOf(0, N-1, N-1)] = 1.0f / 3.0f * (field[grid->indexOf(1, N-1, N-1)] +
                                         field[grid->indexOf(0, N-2, N-1)] +
                                         field[grid->indexOf(0, N-1, N-2)]);
-            field[grid->indexOf(N-1, 0, 0)] = 0.33f * (field[grid->indexOf(N-2, 0, 0)] +
+            field[grid->indexOf(N-1, 0, 0)] = 1.0f / 3.0f * (field[grid->indexOf(N-2, 0, 0)] +
                                         field[grid->indexOf(N-1, 1, 0)] +
-                                        + field[grid->indexOf(N-1, 0, 1)]);
+                                        field[grid->indexOf(N-1, 0, 1)]);
                                         
-            field[grid->indexOf(N-1, N-1, 0)] = 0.33f * (field[grid->indexOf(N-2, N-1, 0)] +
+            field[grid->indexOf(N-1, N-1, 0)] = 1.0f / 3.0f * (field[grid->indexOf(N-2, N-1, 0)] +
                                         field[grid->indexOf(N-1, N-2, 0)] +
                                         field[grid->indexOf(N-1, N-1, 1)]);
-            field[grid->indexOf(N-1, 0, N-1)] = 0.33f * (field[grid->indexOf(N-2, 0, N-1)] +
+            field[grid->indexOf(N-1, 0, N-1)] = 1.0f / 3.0f * (field[grid->indexOf(N-2, 0, N-1)] +
                                         field[grid->indexOf(N-1, 1, N-1)] +
                                         field[grid->indexOf(N-1, 0, N-2)]);
 
-            field[grid->indexOf(N-1, N-1, N-1)] = 0.33f * (field[grid->indexOf(N-2, N-1, N-1)] +
+            field[grid->indexOf(N-1, N-1, N-1)] = 1.0f / 3.0f * (field[grid->indexOf(N-2, N-1, N-1)] +
                                         field[grid->indexOf(N-1, N-2, N-1)] +
                                         field[grid->indexOf(N-1, N-1, N-2)]);
         }

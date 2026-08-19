@@ -83,7 +83,7 @@ namespace fsim {
 
             setBounds(SCALAR, divergence, N);
             setBounds(SCALAR, pressure, N);
-            gaussSeidel(SCALAR, pressure, divergence, 1, 6, iters, N);
+            gaussSeidel(SCALAR, pressure, divergence, 1, 4, iters, N);
 
             for (int j = 1; j < N-1; j++) {
                 for (int i = 1; i < N-1; i++) {
@@ -108,7 +108,7 @@ namespace fsim {
             int N       = grid->size;
             float dt    = grid->time_step;
 
-            float Nf    = N;
+            float Nf    = N-2;
             float dtx   = dt * (N - 2);
             float dty   = dt * (N - 2);
 
@@ -172,26 +172,22 @@ namespace fsim {
             float *field, 
             int N
         ) {
-            for (int k = 1; k < N-1; k++) {
-                for (int i = 1; i < N-1; i++) {
-                    field[grid->indexOf(i, 0)] = 
-                        axis == 2 ? -field[grid->indexOf(i, 1)] 
-                        : field[grid->indexOf(i, 1)];
-                    field[grid->indexOf(i, N-1)] = 
-                        axis == 2 ? -field[grid->indexOf(i, N-2)] 
-                        : field[grid->indexOf(i, N-2)];
-                }
+            for (int i = 1; i < N-1; i++) {
+                field[grid->indexOf(i, 0)] = 
+                    axis == 2 ? -field[grid->indexOf(i, 1)] 
+                    : field[grid->indexOf(i, 1)];
+                field[grid->indexOf(i, N-1)] = 
+                    axis == 2 ? -field[grid->indexOf(i, N-2)] 
+                    : field[grid->indexOf(i, N-2)];
             }
 
-            for (int k = 1; k < N-1; k++) {
-                for (int j = 1; j < N-1; j++) {
-                    field[grid->indexOf(0, j)] = 
-                        axis == 1 ? -field[grid->indexOf(1, j)] 
-                        : field[grid->indexOf(1, j)];
-                    field[grid->indexOf(N-1, j)] = 
-                        axis == 1 ? -field[grid->indexOf(N-2, j)] 
-                        : field[grid->indexOf(N-2, j)];
-                }
+            for (int j = 1; j < N-1; j++) {
+                field[grid->indexOf(0, j)] = 
+                    axis == 1 ? -field[grid->indexOf(1, j)] 
+                    : field[grid->indexOf(1, j)];
+                field[grid->indexOf(N-1, j)] = 
+                    axis == 1 ? -field[grid->indexOf(N-2, j)] 
+                    : field[grid->indexOf(N-2, j)];
             }
             
             field[grid->indexOf(0, 0)]      = 0.5f * (field[grid->indexOf(1, 0)]     + field[grid->indexOf(0, 1)]);
