@@ -6,19 +6,21 @@
 
 #include <GLFW/glfw3.h>
 
-#include "simulation.cpp"
+#include "simulations/ISimulation.hpp"
+#include "simulations/WaterSimulation2d.hpp"
+#include <thread>
 
 #define INITIAL_VELOCITY 2.0f
 #define FRAME_VELOCITY 0.1f
 #define DENSITY_RADIUS 3.0f
-#define POINT_COUNT 2
+#define POINT_COUNT 1
 
 const int N = CUBE_SIZE_DEFAULT;
 
 float pointsX[]         = { N/4, 3 * N/4 };
 float pointsY[]         = { 3*N/4, N/4 };
 float initialDensity[]  = { 2.0f, 2.0f };
-float frameDensity[]    = { 0.5f, 0.5f };
+float frameDensity[]    = { 5.0f, 0.5f };
 
 std::ostream& operator<<(std::ostream& os, fsim::FluidCube& cube);
 
@@ -42,6 +44,26 @@ void drawGridAsTexture(fsim::FluidCube *grid) {
     glDisable(GL_TEXTURE_2D);
 }
 
+void drawWater(fsim::VoxelizedCube *cube) {
+    int N = cube->size;
+
+    std::vector<float> pixels(N * N);
+    for (int y = 0; y < N; ++y)
+        for (int x = 0; x < N; ++x)
+            pixels[y * N + x] = (cube->isFluid(x, y)) ? 1.0f : 0.0f;
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, N, N, 0, GL_LUMINANCE, GL_FLOAT, pixels.data());
+
+    glEnable(GL_TEXTURE_2D);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0); glVertex2f(-1, -1);
+    glTexCoord2f(1, 0); glVertex2f( 1, -1);
+    glTexCoord2f(1, 1); glVertex2f( 1,  1);
+    glTexCoord2f(0, 1); glVertex2f(-1,  1);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+}
+
 void addSwirlVelocity(fsim::FluidCube *grid, float velocity) {
     int distance = grid->size / 8;
     for (int i = 0; i < grid->size/2; i++) {
@@ -52,8 +74,7 @@ void addSwirlVelocity(fsim::FluidCube *grid, float velocity) {
     }
 }
 
-void runSmokeSimulation(GLFWwindow* window, fsim::GridSimulation2d *simulation) {
-
+void runSmokeSimulation(GLFWwindow* window, fsim::SmokeSimulation2d *simulation) {
     fsim::FluidCube *grid = simulation->getGrid();
 
     glfwMakeContextCurrent(window);
@@ -92,12 +113,48 @@ void runSmokeSimulation(GLFWwindow* window, fsim::GridSimulation2d *simulation) 
     glDeleteTextures(1, &texture);
 }
 
+void runWaterSimulation(GLFWwindow* window, fsim::WaterSimulation2d *simulation) {
+    fsim::VoxelizedCube *grid = (fsim::VoxelizedCube*) simulation->getGrid();
+
+    glfwMakeContextCurrent(window);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+    // addSwirlVelocity(grid, INITIAL_VELOCITY);
+    for (int p = 0; p < POINT_COUNT; p++) {
+        grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, initialDensity[p]);
+    }
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        
+        for (int p = 0; p < POINT_COUNT; p++) {
+            grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, frameDensity[p] * CUBE_TIMESTEP_DEFAULT);
+        }
+        // addSwirlVelocity(grid, FRAME_VELOCITY * CUBE_TIMESTEP_DEFAULT);
+
+        simulation->step();
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        drawWater(grid);
+
+        glfwSwapBuffers(window);
+    }
+
+    glDeleteTextures(1, &texture);
+}
+
 int main() {
-
-    fsim::FluidCube *cube = new fsim::FluidCube();
-    fsim::GridSimulation2d *simulation = new fsim::GridSimulation2d(cube);
-
-    std::cout << *cube;
+    fsim::FluidCube *cube = new fsim::VoxelizedCube();
+    fsim::ISimulation *simulation = new fsim::WaterSimulation2d(cube);
 
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW\n";
@@ -112,7 +169,8 @@ int main() {
         return 1;
     }
 
-    runSmokeSimulation(window, simulation);
+    // runSmokeSimulation(window, (fsim::SmokeSimulation2d*) simulation);
+    runWaterSimulation(window, (fsim::WaterSimulation2d*) simulation);
 
     glfwDestroyWindow(window);
     glfwTerminate();

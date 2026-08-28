@@ -1,21 +1,26 @@
 #pragma once
 
 #include <cmath>
+#include <cstring>
 
-#include "types.cpp"
-#include "constants.cpp"
-#include "enums.cpp"
+#include "../types/FluidCube.hpp"
+#include "../types/VoxelizedCube.hpp"
+
+#include "../Constants.hpp"
+#include "../Enums.hpp"
+
+#include "../simulations/ISimulation.hpp"
 
 namespace fsim {
 
-    class GridSimulation2d {
+    class SmokeSimulation2d : public ISimulation {
 
     public:
-        GridSimulation2d(FluidCube *grid) {
+        SmokeSimulation2d(FluidCube *grid) {
             this->grid = grid;
         }
 
-        void step() {
+        virtual void step() override {
             int N           = grid->size;
             float viscosity = grid->viscosity;
             float diffusion = grid->diffusion;
@@ -47,10 +52,10 @@ namespace fsim {
             return grid;
         }
 
-    private:
+    protected:
         FluidCube *grid;
 
-        void diffuse (
+        virtual void diffuse (
             AXIS axis, 
             float *x, 
             float *field_prev, 
@@ -61,10 +66,10 @@ namespace fsim {
             int iters = GRID_BASED_ITER;
 
             float coeff = time_step * diffusion * (N - 2) * (N - 2);
-            gaussSeidel(axis, x, field_prev, coeff, 1 + 4 * coeff, iters, N);
+            gaussSeidel(axis, x, field_prev, coeff, 1 + 4 * coeff, iters);
         }
 
-        void project(
+        virtual void project(
             float *Vx,
             float *Vy,
             float *pressure,
@@ -73,28 +78,28 @@ namespace fsim {
             int N = grid->size;
             int iters = GRID_BASED_ITER;
 
-            for (int j = 1; j < N-1; j++) {
-                for (int i = 1; i < N-1; i++) {
-                    divergence[grid->indexOf(i, j)] = -0.5f * (
-                            Vx[grid->indexOf(i+1, j)] -
-                            Vx[grid->indexOf(i-1, j)] +
-                            Vy[grid->indexOf(i, j+1)] -
-                            Vy[grid->indexOf(i, j-1)]
+            for (int x = 1; x < N-1; x++) {
+                for (int y = 1; y < N-1; y++) {
+                    divergence[grid->indexOf(x, y)] = -0.5f * (
+                            Vx[grid->indexOf(x+1, y)] -
+                            Vx[grid->indexOf(x-1, y)] +
+                            Vy[grid->indexOf(x, y+1)] -
+                            Vy[grid->indexOf(x, y-1)]
                         ) / N;
-                    pressure[grid->indexOf(i, j)] = 0;
+                    pressure[grid->indexOf(x, y)] = 0;
                 }
             }
 
             setBounds(SCALAR, divergence, N);
             setBounds(SCALAR, pressure, N);
-            gaussSeidel(SCALAR, pressure, divergence, 1, 4, iters, N);
+            gaussSeidel(SCALAR, pressure, divergence, 1, 4, iters);
 
-            for (int j = 1; j < N-1; j++) {
-                for (int i = 1; i < N-1; i++) {
-                    Vx[grid->indexOf(i, j)] -= 0.5f * (pressure[grid->indexOf(i+1, j)] -
-                                                         pressure[grid->indexOf(i-1, j)]) * N;
-                    Vy[grid->indexOf(i, j)] -= 0.5f * (pressure[grid->indexOf(i, j+1)] -
-                                                         pressure[grid->indexOf(i, j-1)]) * N;
+            for (int x = 1; x < N-1; x++) {
+                for (int y = 1; y < N-1; y++) {
+                    Vx[grid->indexOf(x, y)] -= 0.5f * (pressure[grid->indexOf(x+1, y)] -
+                                                         pressure[grid->indexOf(x-1, y)]) * N;
+                    Vy[grid->indexOf(x, y)] -= 0.5f * (pressure[grid->indexOf(x, y+1)] -
+                                                         pressure[grid->indexOf(x, y-1)]) * N;
                 }
             }
             
@@ -102,7 +107,7 @@ namespace fsim {
             setBounds(Y_AXIS, Vy, N);
         }
 
-        void advect(
+        virtual void advect(
             AXIS axis,
             float *field,
             float *field_prev,
@@ -113,8 +118,8 @@ namespace fsim {
             float dt    = grid->time_step;
 
             float Nf    = N-2;
-            float dtx   = dt * (N - 2);
-            float dty   = dt * (N - 2);
+            float dtx   = dt * Nf;
+            float dty   = dt * Nf;
 
             for (int j = 1; j < N-1; j++) {
                 for (int i = 1; i < N-1; i++) {
@@ -143,35 +148,20 @@ namespace fsim {
             setBounds(axis, field, N);
         }
 
-    private:
-        void gaussSeidel (
+    protected:
+        virtual void gaussSeidel (
             AXIS axis, 
             float *field, 
             float *field_prev, 
             float coeff, 
             float normalization, 
-            int iters,
-            int N
+            int iters
         ) {
-            runForNSteps(iters) {
-                for (int i = 1; i < N-1; i++) {
-                    for (int j = 1; j < N-1; j++) {
-                        field[grid->indexOf(i, j)] = (
-                            field_prev[grid->indexOf(i, j)] + coeff * (
-                                field[grid->indexOf(i-1, j)] +
-                                field[grid->indexOf(i+1, j)] +
-                                field[grid->indexOf(i, j-1)] +
-                                field[grid->indexOf(i, j+1)] 
-                            ) 
-                        ) * 1.0f / normalization;
-                    }
-                }
-
-                setBounds(axis, field, N);
-            }
+            fsim::GaussSeidel(field, field_prev, coeff, normalization, iters, grid->size);
+            setBounds(axis, field, grid->size);
         }
 
-        void setBounds(
+        virtual void setBounds(
             AXIS axis, 
             float *field, 
             int N
@@ -201,4 +191,5 @@ namespace fsim {
         }
 
     };
+
 }

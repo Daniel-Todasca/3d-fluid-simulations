@@ -1,14 +1,17 @@
 #pragma once
 
-#include "macros.cpp"
-#include "constants.cpp"
-#include "maths.cpp"
+#include "../Macros.hpp"
+#include "../Constants.hpp"
+#include "../Maths.hpp"
 
 namespace fsim {
     
     class FluidCube {
-
     public:
+        inline float volume() {
+            return size * size;
+        }
+
         void addDensity(int x, int y, float amount) {
             density[indexOf(x, y)] += amount;
         }
@@ -17,9 +20,9 @@ namespace fsim {
             int N = size;
             for (int x2 = 1; x2 < N-1; x2++) {
                 for (int y2 = 1; y2 < N-1; y2++) {
-                    float distance = fsim::distance((float) x, (float) y, (float) x2, (float) y2);
-                    if (distance > radius) continue;
-                    density[indexOf(x2, y2)] += amount / (1.0f + distance);
+                    float Distance = fsim::Distance((float) x, (float) y, (float) x2, (float) y2);
+                    if (Distance > radius) continue;
+                    density[indexOf(x2, y2)] += amount / (1.0f + Distance);
                 }
             }
         }
@@ -29,7 +32,13 @@ namespace fsim {
             Vy[indexOf(x, y)] += vy;
         }
 
+        void addFrameVelocity(int x, int y, float vx, float vy) {
+            Vx[indexOf(x, y)] += vx * time_step;
+            Vy[indexOf(x, y)] += vy * time_step;
+        }
+
         inline int indexOf(int x, int y) {
+            // if (x < 0 || y < 0 || x >= size || y >= size) return 0;
             return x + y*size;
         }
 
@@ -51,7 +60,7 @@ namespace fsim {
             CUBE_DIFFUSION_DEFAULT,
             CUBE_VISCOSITY_DEFAULT,
             CUBE_TIMESTEP_DEFAULT
-        ) {}
+        ) { }
 
         FluidCube(
             int size,
