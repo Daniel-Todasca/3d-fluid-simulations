@@ -14,8 +14,7 @@ namespace fsim {
 
     class WaterSimulation2d : public SmokeSimulation2d {
     public:
-        WaterSimulation2d(FluidCube *grid) : WaterSimulation2d(grid, WATER_SIMULATION_2D_GRAVITY_DEFAULT) { }
-        WaterSimulation2d(FluidCube *grid, float gravity) : SmokeSimulation2d(grid), gravity(gravity) { }
+        WaterSimulation2d(FluidCube *grid, const Scene &scene) : SmokeSimulation2d(grid, scene) { }
 
         virtual void step() override {
             VoxelizedCube* cube = (VoxelizedCube*) getGrid();
@@ -31,14 +30,12 @@ namespace fsim {
         }
 
     private:
-        float gravity;
-
         void applyGravity() {
             VoxelizedCube* cube = (VoxelizedCube*) getGrid();
             for (int x = 1; x < cube->size-1; x++) {
                 for (int y = 1; y < cube->size-1; y++) {
                     if (cube->isFluid(x, y)) {
-                        cube->addFrameVelocity(x, y, 0.0f, -gravity);
+                        cube->addFrameVelocity(x, y, 0.0f, -scene.gravity);
                     }
                 }
             }
@@ -55,7 +52,7 @@ namespace fsim {
                     else if (grid->density[idx] > 1.0f) grid->density[idx] = 1.0f;
 
                     // only top up cells that are still nearly full
-                    if (grid->density[idx] > WATER_SHARPEN_THRESHOLD &&
+                    if (grid->density[idx] > scene.waterSharpenThreshold &&
                         cube->isFluid(x-1, y) && cube->isFluid(x+1, y) &&
                         cube->isFluid(x, y-1) && cube->isFluid(x, y+1)) {
                         grid->density[idx] = 1.0f;
@@ -103,7 +100,7 @@ namespace fsim {
                 }
             }
 
-            gaussSeidel(SCALAR, pressure, divergence, 1, 4, WATER_PRESSURE_ITER);
+            gaussSeidel(SCALAR, pressure, divergence, 1, 4, scene.iterations);
 
             for (int y = 1; y < N-1; y++) {
                 for (int x = 1; x < N-1; x++) {
@@ -142,7 +139,7 @@ namespace fsim {
             // air pressure stays 0, so it acts as the Dirichlet term
             VoxelizedCube* cube = (VoxelizedCube*) grid;
             fsim::GaussSeidel(
-                field, field_prev, coeff, iters, N,
+                field, field_prev, scene.overRelaxation, coeff, iters, N,
                 [cube](int x, int y) { return cube->isFluid(x, y); },
                 [cube](int x, int y) { return cube->isSolid(x, y) ? 0.0f : 1.0f; }
             );

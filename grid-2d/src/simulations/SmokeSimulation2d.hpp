@@ -5,6 +5,7 @@
 
 #include "../types/FluidCube.hpp"
 #include "../types/VoxelizedCube.hpp"
+#include "../types/Scene.hpp"
 
 #include "../Constants.hpp"
 #include "../Enums.hpp"
@@ -16,8 +17,13 @@ namespace fsim {
     class SmokeSimulation2d : public ISimulation {
 
     public:
-        SmokeSimulation2d(FluidCube *grid) {
+        SmokeSimulation2d(FluidCube *grid, const Scene &scene) {
             this->grid = grid;
+            this->scene = scene;
+        }
+
+        ~SmokeSimulation2d() {
+            if (grid) delete grid;
         }
 
         virtual void step() override {
@@ -53,6 +59,7 @@ namespace fsim {
         }
 
     protected:
+        Scene scene;
         FluidCube *grid;
 
         virtual void diffuse (
@@ -63,7 +70,7 @@ namespace fsim {
         ) {
             float time_step = grid->time_step;
             int N = grid->size;
-            int iters = GRID_BASED_ITER;
+            int iters = scene.iterations;
 
             float coeff = time_step * diffusion * (N - 2) * (N - 2);
             gaussSeidel(axis, x, field_prev, coeff, 1 + 4 * coeff, iters);
@@ -76,7 +83,7 @@ namespace fsim {
             float *divergence
         ) {
             int N = grid->size;
-            int iters = GRID_BASED_ITER;
+            int iters = scene.iterations;
 
             for (int x = 1; x < N-1; x++) {
                 for (int y = 1; y < N-1; y++) {
@@ -157,7 +164,7 @@ namespace fsim {
             float normalization, 
             int iters
         ) {
-            fsim::GaussSeidel(field, field_prev, coeff, normalization, iters, grid->size);
+            fsim::GaussSeidel(field, field_prev, scene.overRelaxation, coeff, normalization, iters, grid->size);
             setBounds(axis, field, grid->size);
         }
 

@@ -12,6 +12,7 @@ namespace fsim {
     void GaussSeidel (
         float *field, 
         float *field_prev, 
+        float overRelaxation,
         float coeff, 
         float normalization, 
         int iters,
@@ -31,7 +32,7 @@ namespace fsim {
                             field[ToIndex(i, j-1)] +
                             field[ToIndex(i, j+1)] 
                         ) 
-                    ) * 1.0f / normalization;
+                    ) * overRelaxation / normalization;
                 }
             }
         }
@@ -43,6 +44,7 @@ namespace fsim {
     void GaussSeidel (
         float *field, 
         float *field_prev, 
+        float overRelaxation,
         float coeff, 
         int iters,
         int N,
@@ -69,7 +71,7 @@ namespace fsim {
                     float sum = a1 * field[ToIndex(x-1, y)] + a2 * field[ToIndex(x+1, y)]
                               + a3 * field[ToIndex(x, y-1)] + a4 * field[ToIndex(x, y+1)];
 
-                    field[ToIndex(x, y)] = (field_prev[ToIndex(x, y)] + coeff * sum) / total;
+                    field[ToIndex(x, y)] = overRelaxation * (field_prev[ToIndex(x, y)] + coeff * sum) / total;
                 }
             }
         }

@@ -6,21 +6,25 @@
 
 #include <GLFW/glfw3.h>
 
-#include "simulations/ISimulation.hpp"
+#include "types/Scene.hpp"
 #include "simulations/WaterSimulation2d.hpp"
+#include "simulations/SmokeSImulation2d.hpp"
+#include "simulations/SimulationFactory.hpp"
+
 #include <thread>
 
 #define INITIAL_VELOCITY 2.0f
 #define FRAME_VELOCITY 0.1f
 #define DENSITY_RADIUS 3.0f
-#define POINT_COUNT 1
+
+int POINT_COUNT = 1;
 
 const int N = CUBE_SIZE_DEFAULT;
 
 float pointsX[]         = { N/4, 3 * N/4 };
 float pointsY[]         = { 3*N/4, N/4 };
 float initialDensity[]  = { 2.0f, 2.0f };
-float frameDensity[]    = { 5.0f, 0.5f };
+float frameDensity[]    = { 2.0f, 2.0f };
 
 std::ostream& operator<<(std::ostream& os, fsim::FluidCube& cube);
 
@@ -153,8 +157,6 @@ void runWaterSimulation(GLFWwindow* window, fsim::WaterSimulation2d *simulation)
 }
 
 int main() {
-    fsim::FluidCube *cube = new fsim::VoxelizedCube();
-    fsim::ISimulation *simulation = new fsim::WaterSimulation2d(cube);
 
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW\n";
@@ -169,14 +171,32 @@ int main() {
         return 1;
     }
 
-    // runSmokeSimulation(window, (fsim::SmokeSimulation2d*) simulation);
-    runWaterSimulation(window, (fsim::WaterSimulation2d*) simulation);
+    fsim::Scene scene = fsim::Scene();
+    scene.type = fsim::WATER_SIMULATION_2D;
+
+    if (scene.type == fsim::WATER_SIMULATION_2D) {
+        scene.iterations = WATER_PRESSURE_ITER;
+    }
+    else if (scene.type == fsim::SMOKE_SIMULATION_2D) {
+        scene.iterations = GRID_BASED_ITER;
+        scene.diffusion = 0.0001f;
+        scene.viscosity = 0.001f;
+        scene.timestep = 0.01f;
+        POINT_COUNT = 2;
+    }
+    
+    fsim::ISimulation *simulation = fsim::SimulationFactory().createSimulation(scene);
+
+    if (scene.type == fsim::WATER_SIMULATION_2D) {
+        runWaterSimulation(window, (fsim::WaterSimulation2d*) simulation);
+    } else {
+        runSmokeSimulation(window, (fsim::SmokeSimulation2d*) simulation);
+    }
 
     glfwDestroyWindow(window);
     glfwTerminate();
 
     delete simulation;
-    delete cube;
 
     return 0;
 }
