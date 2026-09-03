@@ -34,7 +34,7 @@ void drawGridAsTexture(fsim::FluidCube *grid) {
     std::vector<float> pixels(N * N);
     for (int y = 0; y < N; ++y)
         for (int x = 0; x < N; ++x)
-            pixels[y * N + x] = std::clamp(grid->density[grid->indexOf(x, y)], 0.0f, 1.0f);
+            pixels[y * N + x] = fsim::clamp(grid->density[grid->indexOf(x, y)], 0.0f, 1.0f);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, N, N, 0, GL_LUMINANCE, GL_FLOAT, pixels.data());
 
@@ -156,6 +156,45 @@ void runWaterSimulation(GLFWwindow* window, fsim::WaterSimulation2d *simulation)
     glDeleteTextures(1, &texture);
 }
 
+void runFlipSimulation(GLFWwindow* window, fsim::FlipSimulation2d *simulation) {
+    // fsim::VoxelizedCube *grid = simulation->getGrid();
+
+    glfwMakeContextCurrent(window);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+    // addSwirlVelocity(grid, INITIAL_VELOCITY);
+    // for (int p = 0; p < POINT_COUNT; p++) {
+    //     grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, initialDensity[p]);
+    // }
+
+    while (!glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        
+        // for (int p = 0; p < POINT_COUNT; p++) {
+        //     grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, frameDensity[p] * CUBE_TIMESTEP_DEFAULT);
+        // }
+        // addSwirlVelocity(grid, FRAME_VELOCITY * CUBE_TIMESTEP_DEFAULT);
+
+        simulation->step();
+
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // drawGridAsTexture(grid);
+
+        glfwSwapBuffers(window);
+    }
+
+    glDeleteTextures(1, &texture);
+}
+
 int main() {
 
     if (!glfwInit()) {
@@ -176,21 +215,26 @@ int main() {
 
     if (scene.type == fsim::WATER_SIMULATION_2D) {
         scene.iterations = WATER_PRESSURE_ITER;
-    }
-    else if (scene.type == fsim::SMOKE_SIMULATION_2D) {
+    } else 
+    if (scene.type == fsim::SMOKE_SIMULATION_2D) {
         scene.iterations = GRID_BASED_ITER;
         scene.diffusion = 0.0001f;
         scene.viscosity = 0.001f;
         scene.timestep = 0.01f;
         POINT_COUNT = 2;
+    } else
+    if (scene.type == fsim::FLIP_SIMULATION_2D) {
+
     }
     
     fsim::ISimulation *simulation = fsim::SimulationFactory().createSimulation(scene);
 
     if (scene.type == fsim::WATER_SIMULATION_2D) {
         runWaterSimulation(window, (fsim::WaterSimulation2d*) simulation);
-    } else {
+    } else if (scene.type == fsim::SMOKE_SIMULATION_2D) {
         runSmokeSimulation(window, (fsim::SmokeSimulation2d*) simulation);
+    } else if (scene.type == fsim::FLIP_SIMULATION_2D) {
+        // runFlipSimulation(window, (fsim::FlipSimulation2d*) simulation);
     }
 
     glfwDestroyWindow(window);

@@ -5,6 +5,26 @@
 #include "Macros.hpp"
 
 namespace fsim {
+    template <typename T>
+    T clamp(T value, T lo, T hi) {
+        return value < lo ? lo : (value > hi ? hi : value);
+    }
+
+    template <typename T>
+    T Max(T a, T b) {
+        return a > b ? a : b;
+    }
+
+    template <typename T>
+    T Min(T a, T b) {
+        return a < b ? a : b;
+    }
+
+    template <typename T>
+    T Sqrt(T value) {
+        return std::sqrt(value);
+    }
+
     float Distance(float x, float y, float x2, float y2) {
         return sqrt((x-x2) * (x-x2) + (y-y2) * (y-y2));
     }
