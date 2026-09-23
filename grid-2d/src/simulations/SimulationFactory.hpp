@@ -48,6 +48,7 @@ namespace fsim {
         }
 
         FlipSimulation2d* createFlipSimulation2d(Scene scene) {
+            scene.iterations = 40;
             FluidCube *cube = new MacGrid(
                 scene.cubeSize,
                 scene.diffusion,

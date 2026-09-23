@@ -6,7 +6,7 @@
 #define CUBE_TIMESTEP_DEFAULT   0.0005f
 
 #define NUM_PARTICLES_DEFAULT    5000
-#define FLIP_PARTICLE_RADIUS     1.2f
+#define FLIP_PARTICLE_RADIUS     1.5f
 
 #define GRID_BASED_ITER         4
 #define WATER_PRESSURE_ITER     40

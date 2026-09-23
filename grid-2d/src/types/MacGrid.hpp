@@ -18,9 +18,9 @@ namespace fsim {
 
     class MacGrid : public VoxelizedCube {
     public:
-        float *p;       // pressure
-        float density;  // fluid density (kg/m^3)
-        float h;        // cell spacing (domain width / grid size)
+        float *pressure; // pressure
+        float density;   // fluid density (kg/m^3)
+        float gridScale; // cell spacing (domain width / grid size)
 
         float solidFlag(int x, int y) {
             return isSolid(x, y) ? 0.0f : 1.0f;
@@ -29,14 +29,14 @@ namespace fsim {
         MacGrid(int size, float diffusion, float viscosity, float time_step,
                 float density = 10.0f, float h = -1.0f)
             : VoxelizedCube(size, diffusion, viscosity, time_step),
-              density(density), h(h > 0.0f ? h : 1.0f / size) {
-            p = makeFloatArray(size * size);
+              density(density), gridScale(h > 0.0f ? h : 1.0f / size) {
+            pressure = makeFloatArray(size * size);
             this->viscosity = 0;
             this->density = 0;
         }
 
         ~MacGrid() {
-            deleteFloatArray(p);
+            deleteFloatArray(pressure);
         }
 
         float divergence(int x, int y) {
@@ -55,21 +55,21 @@ namespace fsim {
         }
 
         MacInterpolation interpolation(float x, float y, int component) {
-            const float halfH = 0.5f * h;
+            const float halfH = 0.5f * gridScale;
             const float dx = component == 0 ? 0.0f : halfH;
             const float dy = component == 0 ? halfH : 0.0f;
 
-            x = fsim::Clamp(x, h, (size - 1) * h);
-            y = fsim::Clamp(y, h, (size - 1) * h);
+            x = fsim::Clamp(x, gridScale, (size - 1) * gridScale);
+            y = fsim::Clamp(y, gridScale, (size - 1) * gridScale);
 
-            int x0 = fsim::Min((int)fsim::Floor((x - dx) / h), size - 2);
-            int y0 = fsim::Min((int)fsim::Floor((y - dy) / h), size - 2);
+            int x0 = fsim::Min((int)fsim::Floor((x - dx) / gridScale), size - 2);
+            int y0 = fsim::Min((int)fsim::Floor((y - dy) / gridScale), size - 2);
 
             int x1 = fsim::Min(x0 + 1, size - 2);
             int y1 = fsim::Min(y0 + 1, size - 2);
 
-            float tx = ((x - dx) - x0 * h) / h;
-            float ty = ((y - dy) - y0 * h) / h;
+            float tx = ((x - dx) - x0 * gridScale) / gridScale;
+            float ty = ((y - dy) - y0 * gridScale) / gridScale;
 
             float sx = 1.0f - tx;
             float sy = 1.0f - ty;

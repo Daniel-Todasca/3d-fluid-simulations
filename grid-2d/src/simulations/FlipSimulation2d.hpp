@@ -42,9 +42,9 @@ namespace fsim {
             if (!du) du = makeFloatArray(((int)grid->volume()));
             if (!dv) dv = makeFloatArray(((int)grid->volume()));
 
-            loopParticles(grid->time_step);
+            loopParticles(grid->time_step * 10);
             transferVelocitiesToGrid();
-            loopGrid(grid->time_step);
+            loopGrid(grid->time_step * 10);
             transferVelocitiesToParticles();
 
             /*
@@ -91,13 +91,14 @@ namespace fsim {
 
         virtual void moveParticles(float time) {
             for (int p=0; p < particles->size; p++) {
-                particles->vy[p] -= scene.gravity * 500 * time;
+                particles->vy[p] -= scene.gravity * 50 * time;
                 particles->px[p] += particles->vx[p] * time;
                 particles->py[p] += particles->vy[p] * time;
             }
         }
 
         virtual void pushParticles(float time) {
+            // time is not used
             float pInvSpacing = 1.0f / (2.2f * scene.particleRadius);
             int pNumX = floor(scene.width * pInvSpacing) + 1;
             int pNumY = floor(scene.height * pInvSpacing) + 1;
@@ -143,6 +144,7 @@ namespace fsim {
             float minDist = 2.0f * scene.particleRadius;
             float minDistSq = minDist * minDist;
 
+            // is this even important or can we skip pushParticlesIter
             runForNSteps(scene.pushParticlesIter) {
                 for (int p = 0; p < particles->size; p++) {
                     float px = particles->px[p];
@@ -187,6 +189,7 @@ namespace fsim {
         }
 
         virtual void handleParticleCollisions(float time) {
+            // this doesn't use the time parameters
             for (int i = 0; i < particles->size; i++) {
                 if (particles->px[i] > scene.width) {
                     particles->px[i] = scene.width;
@@ -226,8 +229,8 @@ namespace fsim {
                 float x = particles->px[i];
                 float y = particles->py[i];
 
-                int cellX = fsim::Clamp((int)Floor(x / mac->h), 0, mac->size - 1);
-                int cellY = fsim::Clamp((int)Floor(y / mac->h), 0, mac->size - 1);
+                int cellX = fsim::Clamp((int)Floor(x / mac->gridScale), 0, mac->size - 1);
+                int cellY = fsim::Clamp((int)Floor(y / mac->gridScale), 0, mac->size - 1);
 
                 mac->setFluid(cellX, cellY);
             }
@@ -323,7 +326,7 @@ namespace fsim {
 
         virtual void updateParticleDensity() {
             MacGrid *mac = (MacGrid*) grid;
-            const float h = mac->h;
+            const float h = mac->gridScale;
             const float invSpacing = 1.0f / h;
 
             for (int i = 0; i < grid->volume(); i++) {
@@ -381,6 +384,8 @@ namespace fsim {
                 }
             }
 
+            // particleRestDensity should be a constants
+            // start of the simulation might point to some invalid state
             if (numFluidCells > 0) {
                 particleRestDensity = sum / numFluidCells;
             }
@@ -390,9 +395,9 @@ namespace fsim {
         virtual void solvePressure(float time) {
             MacGrid *mac = (MacGrid*) grid;
             int N = mac->size;
-            float cp = mac->density * mac->h / time;
+            float pressureCorrection = mac->density * mac->gridScale / time;
 
-            for (int i = 0; i < N*N; i++) mac->p[i] = 0.0f;
+            for (int i = 0; i < N*N; i++) mac->pressure[i] = 0.0f;
 
             runForNSteps(scene.iterations) {
                 for (int i = 1; i < N-1; i++) {
@@ -417,13 +422,16 @@ namespace fsim {
                             }
                         }
 
-                        float p = -div / s * scene.overRelaxation;
-                        mac->p[mac->indexOf(i, j)] += cp * p;
+                        float pressureDelta = -div / s * scene.overRelaxation;
+                        // likely unused and can be removed
+                        // compare with other pressure solvers
+                        mac->pressure[mac->indexOf(i, j)] += pressureCorrection * pressureDelta;
 
-                        mac->Vx[mac->indexOf(i,   j)] -= sx0 * p;
-                        mac->Vx[mac->indexOf(i+1, j)] += sx1 * p;
-                        mac->Vy[mac->indexOf(i, j  )] -= sy0 * p;
-                        mac->Vy[mac->indexOf(i, j+1)] += sy1 * p;
+                        // likely pressureCorrection not needed either?
+                        mac->Vx[mac->indexOf(i,   j)] -= sx0 * pressureDelta;
+                        mac->Vx[mac->indexOf(i+1, j)] += sx1 * pressureDelta;
+                        mac->Vy[mac->indexOf(i, j  )] -= sy0 * pressureDelta;
+                        mac->Vy[mac->indexOf(i, j+1)] += sy1 * pressureDelta;
                     }
                 }
             }
