@@ -20,7 +20,7 @@ namespace fsim {
 
         Scene(
             float gravity, float timestep, float overRelaxation,
-            float diffusion, float viscosity, float iterations,
+            float diffusion, float viscosity, int iterations,
             float minDensityClass, float cubeSize, float waterSharpenThreshold, float numParticles,
             float particleRadius, float width, float height, float pushParticlesIter, SceneType type
         ) {
@@ -39,6 +39,7 @@ namespace fsim {
             this->height = height;
             this->pushParticlesIter = pushParticlesIter;
             this->type = type;
+            this->flipRatio = 0.9f;
         }
 
         SceneType type;
@@ -47,7 +48,7 @@ namespace fsim {
         float overRelaxation;
         float diffusion;
         float viscosity;
-        float iterations;
+        int iterations;
         float minDensityClass;
         float cubeSize;
         float waterSharpenThreshold;
@@ -56,5 +57,7 @@ namespace fsim {
         float width;
         float height;
         float pushParticlesIter;
+        float flipRatio;
+        float particleCollisionDamping = 0.5f;
     };
 }

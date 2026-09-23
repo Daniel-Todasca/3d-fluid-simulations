@@ -48,7 +48,7 @@ namespace fsim {
         }
 
         FlipSimulation2d* createFlipSimulation2d(Scene scene) {
-            FluidCube *cube = new VoxelizedCube(
+            FluidCube *cube = new MacGrid(
                 scene.cubeSize,
                 scene.diffusion,
                 scene.viscosity,

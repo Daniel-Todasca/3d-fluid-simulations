@@ -6,7 +6,7 @@
 
 namespace fsim {
     template <typename T>
-    T clamp(T value, T lo, T hi) {
+    T Clamp(T value, T lo, T hi) {
         return value < lo ? lo : (value > hi ? hi : value);
     }
 
@@ -23,6 +23,11 @@ namespace fsim {
     template <typename T>
     T Sqrt(T value) {
         return std::sqrt(value);
+    }
+
+    template <typename T>
+    T Floor(T value) {
+        return std::floor(value);
     }
 
     float Distance(float x, float y, float x2, float y2) {

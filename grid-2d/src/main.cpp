@@ -34,7 +34,7 @@ void drawGridAsTexture(fsim::FluidCube *grid) {
     std::vector<float> pixels(N * N);
     for (int y = 0; y < N; ++y)
         for (int x = 0; x < N; ++x)
-            pixels[y * N + x] = fsim::clamp(grid->density[grid->indexOf(x, y)], 0.0f, 1.0f);
+            pixels[y * N + x] = fsim::Clamp(grid->density[grid->indexOf(x, y)], 0.0f, 1.0f);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, N, N, 0, GL_LUMINANCE, GL_FLOAT, pixels.data());
 
@@ -68,13 +68,26 @@ void drawWater(fsim::VoxelizedCube *cube) {
     glDisable(GL_TEXTURE_2D);
 }
 
+void drawParticles(fsim::ParticleCollection *particles, fsim::Scene scene) {
+    int N = particles->size;
+
+    glPointSize(3.0f);
+    glBegin(GL_POINTS);
+    for (int i = 0; i < N; ++i) {
+        float x = particles->px[i] / scene.width;
+        float y = particles->py[i] / scene.height;
+        glVertex2f(2.0f * x - 1.0f, 2.0f * y - 1.0f);
+    }
+    glEnd();
+}
+
 void addSwirlVelocity(fsim::FluidCube *grid, float velocity) {
     int distance = grid->size / 8;
     for (int i = 0; i < grid->size/2; i++) {
-        grid->addVelocity(pointsX[0] - distance, pointsY[0] + i, 0, -velocity);
-        grid->addVelocity(pointsX[0] + distance, pointsY[0] + i, 0, velocity);
-        grid->addVelocity(pointsX[1] - distance, pointsY[1] + i, 0, velocity);
-        grid->addVelocity(pointsX[1] + distance, pointsY[1] + i, 0, -velocity);
+        grid->addVelocity(pointsX[0] - distance, pointsY[0] + i, 10, -velocity);
+        grid->addVelocity(pointsX[0] + distance, pointsY[0] + i, -10, velocity);
+        grid->addVelocity(pointsX[1] - distance, pointsY[1] + i, 10, velocity);
+        grid->addVelocity(pointsX[1] + distance, pointsY[1] + i, -10, -velocity);
     }
 }
 
@@ -157,7 +170,8 @@ void runWaterSimulation(GLFWwindow* window, fsim::WaterSimulation2d *simulation)
 }
 
 void runFlipSimulation(GLFWwindow* window, fsim::FlipSimulation2d *simulation) {
-    // fsim::VoxelizedCube *grid = simulation->getGrid();
+    fsim::MacGrid *grid = (fsim::MacGrid*) simulation->getGrid();
+    fsim::ParticleCollection *particles = simulation->getParticles();
 
     glfwMakeContextCurrent(window);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -170,10 +184,14 @@ void runFlipSimulation(GLFWwindow* window, fsim::FlipSimulation2d *simulation) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-    // addSwirlVelocity(grid, INITIAL_VELOCITY);
+    addSwirlVelocity(grid, INITIAL_VELOCITY);
     // for (int p = 0; p < POINT_COUNT; p++) {
     //     grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, initialDensity[p]);
     // }
+    for (int p = 0; p < particles->size; p++) {
+        particles->px[p] = 100 + (rand() % 1000) * 0.1f;
+        particles->py[p] = 100 + (rand() % 1000) * 0.1f;
+    }
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -181,13 +199,13 @@ void runFlipSimulation(GLFWwindow* window, fsim::FlipSimulation2d *simulation) {
         // for (int p = 0; p < POINT_COUNT; p++) {
         //     grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, frameDensity[p] * CUBE_TIMESTEP_DEFAULT);
         // }
-        // addSwirlVelocity(grid, FRAME_VELOCITY * CUBE_TIMESTEP_DEFAULT);
+        addSwirlVelocity(grid, FRAME_VELOCITY * 1000);
 
         simulation->step();
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // drawGridAsTexture(grid);
+        drawParticles(particles, simulation->getScene());
 
         glfwSwapBuffers(window);
     }
@@ -202,7 +220,7 @@ int main() {
         return 1;
     }
 
-    GLFWwindow* window = glfwCreateWindow(300, 300, "Fluid Simulation", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(600, 600, "Fluid Simulation", nullptr, nullptr);
 
     if (!window) {
         std::cerr << "Failed to create GLFW window\n";
@@ -211,7 +229,7 @@ int main() {
     }
 
     fsim::Scene scene = fsim::Scene();
-    scene.type = fsim::WATER_SIMULATION_2D;
+    scene.type = fsim::FLIP_SIMULATION_2D;
 
     if (scene.type == fsim::WATER_SIMULATION_2D) {
         scene.iterations = WATER_PRESSURE_ITER;
@@ -224,7 +242,7 @@ int main() {
         POINT_COUNT = 2;
     } else
     if (scene.type == fsim::FLIP_SIMULATION_2D) {
-
+        scene.iterations = WATER_PRESSURE_ITER;
     }
     
     fsim::ISimulation *simulation = fsim::SimulationFactory().createSimulation(scene);
@@ -234,7 +252,7 @@ int main() {
     } else if (scene.type == fsim::SMOKE_SIMULATION_2D) {
         runSmokeSimulation(window, (fsim::SmokeSimulation2d*) simulation);
     } else if (scene.type == fsim::FLIP_SIMULATION_2D) {
-        // runFlipSimulation(window, (fsim::FlipSimulation2d*) simulation);
+        runFlipSimulation(window, (fsim::FlipSimulation2d*) simulation);
     }
 
     glfwDestroyWindow(window);

@@ -57,6 +57,9 @@ namespace fsim {
         FluidCube *getGrid() {
             return grid;
         }
+        Scene getScene() {
+            return scene;
+        }
 
     protected:
         Scene scene;

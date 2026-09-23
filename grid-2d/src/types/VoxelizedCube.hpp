@@ -59,6 +59,7 @@ namespace fsim {
         }
 
         void classifyCells() {
+            // makes sense to move the MIN_DENSITY to a parameter in this method
             for (int x = 1; x < size-1; x++) {
                 for (int y = 1; y < size-1; y++) {
                     if (density[indexOf(x, y)] > MIN_DENSITY) {
@@ -74,6 +75,25 @@ namespace fsim {
                 cellType[indexOf(n, size-1)] = SOLID;
                 cellType[indexOf(0, n)] = SOLID;
                 cellType[indexOf(size-1, n)] = SOLID;
+            }
+        }
+
+        void resetFluidCells() {
+            for (int x = 0; x < size; x++) {
+                for (int y = 0; y < size; y++) {
+                    if (!isSolid(x, y)) {
+                        cellType[indexOf(x, y)] = AIR;
+                    }
+                }
+            }
+        }
+
+        void setFluid(int x, int y) {
+            if (x < 0 || y < 0 || x >= size || y >= size)
+                return;
+
+            if (!isSolid(x, y)) {
+                cellType[indexOf(x, y)] = FLUID;
             }
         }
 
