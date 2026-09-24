@@ -184,7 +184,7 @@ void runFlipSimulation(GLFWwindow* window, fsim::FlipSimulation2d *simulation) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-    addSwirlVelocity(grid, INITIAL_VELOCITY);
+    // addSwirlVelocity(grid, INITIAL_VELOCITY);
     // for (int p = 0; p < POINT_COUNT; p++) {
     //     grid->addDensityToCircle(pointsX[p], pointsY[p], DENSITY_RADIUS, initialDensity[p]);
     // }

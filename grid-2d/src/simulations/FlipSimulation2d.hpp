@@ -42,9 +42,10 @@ namespace fsim {
             if (!du) du = makeFloatArray(((int)grid->volume()));
             if (!dv) dv = makeFloatArray(((int)grid->volume()));
 
-            loopParticles(grid->time_step * 10);
+            float timeSpeedUp = 10;
+            loopParticles(grid->time_step * timeSpeedUp);
             transferVelocitiesToGrid();
-            loopGrid(grid->time_step * 10);
+            loopGrid(grid->time_step * timeSpeedUp);
             transferVelocitiesToParticles();
 
             /*
@@ -90,8 +91,9 @@ namespace fsim {
         }
 
         virtual void moveParticles(float time) {
+            float gravityBoost = 50;
             for (int p=0; p < particles->size; p++) {
-                particles->vy[p] -= scene.gravity * 50 * time;
+                particles->vy[p] -= scene.gravity * gravityBoost * time;
                 particles->px[p] += particles->vx[p] * time;
                 particles->py[p] += particles->vy[p] * time;
             }
