@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../simulations/SmokeSimulation2d.hpp"
-#include "../simulations/WaterSimulation2d.hpp"
-#include "../simulations/FlipSimulation2d.hpp"
+#include "../stable-fluids/SmokeSimulation2d.hpp"
+#include "../stable-fluids/WaterSimulation2d.hpp"
+#include "../flip/FlipSimulation2d.hpp"
 
-#include "../types/Scene.hpp"
-#include "../types/FluidCube.hpp"
-#include "../types/VoxelizedCube.hpp"
-#include "../types/ParticleCollection.hpp"
+#include "Scene.hpp"
+#include "../stable-fluids/FluidCube.hpp"
+#include "../stable-fluids/VoxelizedCube.hpp"
+#include "../flip/ParticleCollection.hpp"
 
 namespace fsim {
     class SimulationFactory {

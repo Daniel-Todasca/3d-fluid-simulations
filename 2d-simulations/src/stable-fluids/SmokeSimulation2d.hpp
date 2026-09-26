@@ -3,14 +3,14 @@
 #include <cmath>
 #include <cstring>
 
-#include "../types/FluidCube.hpp"
-#include "../types/VoxelizedCube.hpp"
-#include "../types/Scene.hpp"
+#include "FluidCube.hpp"
+#include "VoxelizedCube.hpp"
+#include "../shared/Scene.hpp"
 
-#include "../Constants.hpp"
-#include "../Enums.hpp"
+#include "../defines.hpp"
+#include "../shared/Enums.hpp"
 
-#include "../simulations/ISimulation.hpp"
+#include "../shared/ISimulation.hpp"
 
 namespace fsim {
 

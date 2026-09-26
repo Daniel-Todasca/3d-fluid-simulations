@@ -6,11 +6,11 @@
 
 #include <GLFW/glfw3.h>
 
-#include "types/Scene.hpp"
-#include "types/SceneFactory.hpp"
-#include "simulations/WaterSimulation2d.hpp"
-#include "simulations/SmokeSImulation2d.hpp"
-#include "simulations/SimulationFactory.hpp"
+#include "shared/Scene.hpp"
+#include "shared/SceneFactory.hpp"
+#include "stable-fluids/WaterSimulation2d.hpp"
+#include "stable-fluids/SmokeSimulation2d.hpp"
+#include "shared/SimulationFactory.hpp"
 
 #include <thread>
 

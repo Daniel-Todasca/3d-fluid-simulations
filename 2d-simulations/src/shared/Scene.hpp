@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Constants.hpp"
+#include "../defines.hpp"
 
 namespace fsim {
     enum SceneType {

@@ -2,8 +2,8 @@
 
 #include <tuple>
 
-#include "VoxelizedCube.hpp"
-#include "../Enums.hpp"
+#include "../stable-fluids/VoxelizedCube.hpp"
+#include "../shared/Enums.hpp"
 
 namespace fsim {
 

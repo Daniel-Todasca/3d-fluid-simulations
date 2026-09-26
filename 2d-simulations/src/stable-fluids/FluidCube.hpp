@@ -1,8 +1,7 @@
 #pragma once
 
-#include "../Macros.hpp"
-#include "../Constants.hpp"
-#include "../Maths.hpp"
+#include "../defines.hpp"
+#include "../shared/Maths.hpp"
 
 namespace fsim {
     

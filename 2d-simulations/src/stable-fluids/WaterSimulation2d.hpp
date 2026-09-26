@@ -3,12 +3,12 @@
 #include <cmath>
 #include <cstring>
 
-#include "../types/FluidCube.hpp"
-#include "../types/VoxelizedCube.hpp"
-#include "../simulations/SmokeSimulation2d.hpp"
+#include "FluidCube.hpp"
+#include "VoxelizedCube.hpp"
+#include "SmokeSimulation2d.hpp"
 
-#include "../Constants.hpp"
-#include "../Enums.hpp"
+#include "../defines.hpp"
+#include "../shared/Enums.hpp"
 
 namespace fsim {
 

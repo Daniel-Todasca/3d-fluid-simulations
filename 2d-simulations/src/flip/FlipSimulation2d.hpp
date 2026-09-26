@@ -1,12 +1,12 @@
 #pragma once
 
-#include "../simulations/ISimulation.hpp"
-#include "../types/ParticleCollection.hpp"
-#include "../types/FluidCube.hpp"
-#include "../types/MacGrid.hpp"
-#include "../types/Scene.hpp"
-#include "../Macros.hpp"
-#include "../Maths.hpp"
+#include "../shared/ISimulation.hpp"
+#include "ParticleCollection.hpp"
+#include "../stable-fluids/FluidCube.hpp"
+#include "MacGrid.hpp"
+#include "../shared/Scene.hpp"
+#include "../defines.hpp"
+#include "../shared/Maths.hpp"
 
 namespace fsim {
     class FlipSimulation2d : public ISimulation {

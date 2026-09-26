@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Macros.hpp"
+#include "../defines.hpp"
 
 namespace fsim {
     class ParticleCollection {

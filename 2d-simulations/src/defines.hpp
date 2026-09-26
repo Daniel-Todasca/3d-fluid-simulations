@@ -1,5 +1,13 @@
 #pragma once
 
+#define makeFloatArray(size)   new float[(size)]()
+#define makeIntArray(size)     new int[(size)]()
+#define deleteFloatArray(arr)  delete[] (arr)
+#define deleteIntArray(arr)    delete[] (arr)
+#define runForNSteps(n)        for (int _step = 0; _step < (n); _step++)
+#define LOG_ENABLED            0
+#define LOG(msg)               if (LOG_ENABLED) std::cout << msg << '\n'
+
 #define CUBE_SIZE_DEFAULT       64
 #define CUBE_DIFFUSION_DEFAULT  0.000f
 #define CUBE_VISCOSITY_DEFAULT  0.01f

@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "Macros.hpp"
+#include "../defines.hpp"
 
 namespace fsim {
     template <typename T>
