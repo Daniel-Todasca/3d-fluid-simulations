@@ -37,7 +37,7 @@ namespace fsim {
             Vy[indexOf(x, y)] += vy * time_step;
         }
 
-        inline int indexOf(int x, int y) {
+        inline int indexOf(int x, int y) const {
             // if (x < 0 || y < 0 || x >= size || y >= size) return 0;
             return x + y*size;
         }
@@ -63,10 +63,7 @@ namespace fsim {
         ) { }
 
         FluidCube(
-            int size,
-            float diffusion,
-            float viscosity,
-            float time_step
+            int size, float diffusion, float viscosity, float time_step
         ) {
             this->size      = size;
             this->diffusion = diffusion;
