@@ -27,33 +27,28 @@ namespace fsim {
             if (numCellParticles) deleteIntArray(numCellParticles);
             if (firstCellParticles) deleteIntArray(firstCellParticles);
             if (cellParticleIds) deleteIntArray(cellParticleIds);
-
             if (particleDensity) deleteFloatArray(particleDensity);
-            if (du) deleteFloatArray(du);
-            if (dv) deleteFloatArray(dv);
+            if (transferWeights) deleteFloatArray(transferWeights);
         }
 
         virtual void step() override {
             if (!particleDensity) particleDensity = makeFloatArray(((int)grid->volume()));
-            if (!du) du = makeFloatArray(((int)grid->volume()));
-            if (!dv) dv = makeFloatArray(((int)grid->volume()));
+            if (!transferWeights) transferWeights = makeFloatArray(((int)grid->volume()));
 
-            float timeSpeedUp = 10;
-
-            applyGravity(grid->time_step * timeSpeedUp);
+            applyGravity(grid->time_step * this->timeSpeedUp);
             transferVelocitiesToGrid();
-            loopGrid(grid->time_step * timeSpeedUp);
+            loopGrid(grid->time_step * this->timeSpeedUp);
             transferVelocitiesToParticles();
             loopParticles(grid->time_step * timeSpeedUp);
         }
 
-        FluidCube *getGrid() {
+        FluidCube *getGrid() const {
             return grid;
         }
-        ParticleCollection *getParticles() {
+        ParticleCollection *getParticles() const {
             return particles;
         }
-        const Scene &getScene() {
+        const Scene &getScene() const {
             return scene;
         }
 
@@ -63,22 +58,20 @@ namespace fsim {
         ParticleCollection *particles;
 
         int *numCellParticles, *firstCellParticles, *cellParticleIds, *cellType;
-        float particleRestDensity = 0;
-        float *particleDensity = nullptr;
-        float *du = nullptr;
-        float *dv = nullptr;
+        float *particleDensity = nullptr, *transferWeights = nullptr;
+
+        float particleRestDensity = 0, timeSpeedUp = 10.0f, mass = 50.0f;
 
         virtual void applyGravity(float time) {
-            float gravityBoost = 50;
-            for (int p=0; p < particles->size; p++) {
-                particles->vy[p] -= scene.gravity * gravityBoost * time;
+            for (int p = 0; p < particles->size; p++) {
+                particles->vy[p] -= scene.gravity * this->mass * time;
             }
         }
 
         virtual void loopParticles(float time) {
             moveParticles(time);
-            pushParticles(time);
-            handleParticleCollisions(time);
+            pushParticles();
+            handleParticleCollisions();
         }
 
         virtual void loopGrid(float time) {
@@ -86,18 +79,34 @@ namespace fsim {
             solvePressure(time);
         }
 
-        virtual void moveParticles(float time) {
+    private:
+        float blendFlipAndPic(float flipRatio, float flipVelocity, float picVelocity) {
+            return (1.0f - flipRatio) * picVelocity + flipRatio * flipVelocity;
+        }
+
+        float compensateDrift(float divergence, float cellDensity) {
+            return divergence;
+            if (particleRestDensity <= 0.0f) return divergence;
+
+            float compression = cellDensity - particleRestDensity;
+            if (compression > 0.0f) {
+                divergence -= compression;
+            }
+            return divergence;
+        }
+
+        void moveParticles(float time) {
             for (int p=0; p < particles->size; p++) {
                 particles->px[p] += particles->vx[p] * time;
                 particles->py[p] += particles->vy[p] * time;
             }
         }
 
-        virtual void pushParticles(float time) {
-            // time is not used
+        void pushParticles() {
+            // not dependent on time
             float pInvSpacing = 1.0f / (2.2f * scene.particleRadius);
-            int pNumX = floor(scene.width * pInvSpacing) + 1;
-            int pNumY = floor(scene.height * pInvSpacing) + 1;
+            int pNumX = floorf(scene.width * pInvSpacing) + 1;
+            int pNumY = floorf(scene.height * pInvSpacing) + 1;
             int numCells = pNumX * pNumY;
             
             if (!numCellParticles) numCellParticles = makeIntArray(numCells); // number of particles per cell
@@ -112,8 +121,8 @@ namespace fsim {
                 float x = particles->px[i];
                 float y = particles->py[i];
 
-                int cellX = fsim::Clamp((int) floor(x * pInvSpacing), 0, pNumX - 1);
-                int cellY = fsim::Clamp((int) floor(y * pInvSpacing), 0, pNumY - 1);
+                int cellX = fsim::Clamp((int) floorf(x * pInvSpacing), 0, pNumX - 1);
+                int cellY = fsim::Clamp((int) floorf(y * pInvSpacing), 0, pNumY - 1);
                 int cellNum = cellX * pNumY + cellY;
                 numCellParticles[cellNum] ++;
             }
@@ -129,8 +138,8 @@ namespace fsim {
                 float x = particles->px[i];
                 float y = particles->py[i];
 
-                int cellX = fsim::Clamp((int) floor(x * pInvSpacing), 0, pNumX - 1);
-                int cellY = fsim::Clamp((int) floor(y * pInvSpacing), 0, pNumY - 1);
+                int cellX = fsim::Clamp((int) floorf(x * pInvSpacing), 0, pNumX - 1);
+                int cellY = fsim::Clamp((int) floorf(y * pInvSpacing), 0, pNumY - 1);
                 int cellNum = cellX * pNumY + cellY;
 
                 firstCellParticles[cellNum] --;
@@ -140,22 +149,22 @@ namespace fsim {
             float minDist = 2.0f * scene.particleRadius;
             float minDistSq = minDist * minDist;
 
-            // is this even important or can we skip pushParticlesIter
+            // bigger pushParticlesIter mean more consecutive particles will get effected, like ripples
             runForNSteps(scene.pushParticlesIter) {
                 for (int p = 0; p < particles->size; p++) {
                     float px = particles->px[p];
                     float py = particles->py[p];
                     
-                    int onGridX = (int) floor(px * pInvSpacing);
-                    int onGridY = (int) floor(py * pInvSpacing);
+                    int onGridX = (int) floorf(px * pInvSpacing);
+                    int onGridY = (int) floorf(py * pInvSpacing);
 
                     int x0 = fsim::Max(onGridX-1, 0);
                     int y0 = fsim::Max(onGridY-1, 0);
                     int x1 = fsim::Min(onGridX+1, pNumX-1);
                     int y1 = fsim::Min(onGridY+1, pNumY-1);
 
-                    for (int x = x0; x<=x1; x++) {
-                        for (int y = y0; y<=y1; y++) {
+                    for (int x = x0; x <= x1; x++) {
+                        for (int y = y0; y <= y1; y++) {
                             int cellNum = x * pNumY + y;
                             int first = firstCellParticles[cellNum];
                             int last = firstCellParticles[cellNum+1];
@@ -184,16 +193,15 @@ namespace fsim {
             }
         }
 
-        virtual void handleParticleCollisions(float time) {
-            // this doesn't use the time parameters
+        void handleParticleCollisions() {
+            // not dependent on time
             MacGrid *mac = (MacGrid*) grid;
-            const float h = mac->gridScale;
+            const float gridCellSpacing = mac->gridScale;
 
-            // keep particle centres one solid cell + one radius inside the walls
-            const float minX = h + scene.particleRadius;
-            const float maxX = (mac->size - 1) * h - scene.particleRadius;
-            const float minY = h + scene.particleRadius;
-            const float maxY = (mac->size - 1) * h - scene.particleRadius;
+            const float minX = gridCellSpacing + scene.particleRadius;
+            const float maxX = (mac->size - 1) * gridCellSpacing - scene.particleRadius;
+            const float minY = gridCellSpacing + scene.particleRadius;
+            const float maxY = (mac->size - 1) * gridCellSpacing - scene.particleRadius;
 
             for (int i = 0; i < particles->size; i++) {
                 if (particles->px[i] > maxX) {
@@ -216,15 +224,10 @@ namespace fsim {
             }
         }
 
-        virtual void transferVelocitiesToGrid() {
+        void transferVelocitiesToGrid() {
             MacGrid *mac = (MacGrid*) grid;
-            const int numCells = grid->volume();
 
-            for (int i = 0; i < numCells; i++) {
-                mac->Vx[i] = 0.0f;
-                mac->Vy[i] = 0.0f;
-            }
-
+            mac->resetVelocity();
             mac->resetFluidCells();
 
             for (int i = 0; i < particles->size; i++) {
@@ -232,129 +235,113 @@ namespace fsim {
                 float y = particles->py[i];
 
                 auto [cellX, cellY] = mac->worldCoordToGridCoord(x, y);
-
                 mac->setFluid(cellX, cellY);
             }
 
-            transferVelocityComponentToGrid(0);
-            transferVelocityComponentToGrid(1);
+            transferVelocityComponentToGrid(X_AXIS);
+            transferVelocityComponentToGrid(Y_AXIS);
 
-            // FLIP delta must be measured against the freshly splatted field
-            for (int i = 0; i < numCells; i++) {
-                mac->prevVx[i] = mac->Vx[i];
-                mac->prevVy[i] = mac->Vy[i];
-            }
+            mac->saveVelocitySnapshot();
         }
 
         virtual void transferVelocitiesToParticles() {
             MacGrid *mac = (MacGrid*) grid;
             for (int component = 0; component < 2; component++) {
                 AXIS axis = component == 0 ? X_AXIS : Y_AXIS;
-                for (int i = 0; i < particles->size; i++) {
-                    float x = particles->px[i];
-                    float y = particles->py[i];
+                for (int p = 0; p < particles->size; p++) {
+                    float x = particles->px[p];
+                    float y = particles->py[p];
 
-                    float picVelocity = mac->interpolateVelocity(x, y, axis);
-                    float deltaVelocity = mac->interpolateVelocityDelta(x, y, axis, mac->prevVx, mac->prevVy);
+                    float picVelocity, deltaVelocity;
+                    std::tie(picVelocity, deltaVelocity) = mac->interpolateStep(x, y, axis);
 
-                    float oldParticleVelocity = component == 0 ? particles->vx[i] : particles->vy[i];
+                    float oldParticleVelocity = component == 0 ? particles->vx[p] : particles->vy[p];
                     float flipVelocity = oldParticleVelocity + deltaVelocity;
 
-                    float newVelocity = (1.0f - scene.flipRatio) * picVelocity + scene.flipRatio * flipVelocity;
+                    float newVelocity = blendFlipAndPic(scene.flipRatio, flipVelocity, picVelocity);
 
                     if (component == 0) {
-                        particles->vx[i] = newVelocity;
+                        particles->vx[p] = newVelocity;
                     }
                     else {
-                        particles->vy[i] = newVelocity;
+                        particles->vy[p] = newVelocity;
                     }
                 }
             }
         }
 
-        void transferVelocityComponentToGrid(int component) {
+        void transferVelocityComponentToGrid(AXIS axis) {
             MacGrid *mac = (MacGrid*) grid;
-            float *velocity = component == 0 ? mac->Vx : mac->Vy;
-            float *weights = makeFloatArray(((int)mac->volume()));
+            float *velocity = axis == X_AXIS ? mac->Vx : mac->Vy;
+            for (int i = 0; i < mac->volume(); i++) {
+                transferWeights[i] = 0.0f;
+            }
 
-            for (int i = 0; i < particles->size; i++) {
-                float x = particles->px[i];
-                float y = particles->py[i];
+            for (int p = 0; p < particles->size; p++) {
+                float x = particles->px[p];
+                float y = particles->py[p];
 
-                MacInterpolation s = mac->interpolation(x, y, component == 0 ? X_AXIS : Y_AXIS);
+                MacInterpolation vel4 = mac->interpolation(x, y, axis);
 
-                int n0 = mac->indexOf(s.x0, s.y0);
-                int n1 = mac->indexOf(s.x1, s.y0);
-                int n2 = mac->indexOf(s.x1, s.y1);
-                int n3 = mac->indexOf(s.x0, s.y1);
+                int n0 = mac->indexOf(vel4.x0, vel4.y0);
+                int n1 = mac->indexOf(vel4.x1, vel4.y0);
+                int n2 = mac->indexOf(vel4.x1, vel4.y1);
+                int n3 = mac->indexOf(vel4.x0, vel4.y1);
 
-                float particleVelocity = component == 0 ? particles->vx[i] : particles->vy[i];
+                float particleVelocity = axis == X_AXIS ? particles->vx[p] : particles->vy[p];
 
-                velocity[n0] += particleVelocity * s.w0;
-                weights[n0] += s.w0;
-                velocity[n1] += particleVelocity * s.w1;
-                weights[n1] += s.w1;
-                velocity[n2] += particleVelocity * s.w2;
-                weights[n2] += s.w2;
-                velocity[n3] += particleVelocity * s.w3;
-                weights[n3] += s.w3;
+                velocity[n0] += particleVelocity * vel4.w0;
+                transferWeights[n0] += vel4.w0;
+                velocity[n1] += particleVelocity * vel4.w1;
+                transferWeights[n1] += vel4.w1;
+                velocity[n2] += particleVelocity * vel4.w2;
+                transferWeights[n2] += vel4.w2;
+                velocity[n3] += particleVelocity * vel4.w3;
+                transferWeights[n3] += vel4.w3;
             }
 
             for (int i = 0; i < mac->volume(); i++) {
-                if (weights[i] > 0.0f) {
-                    velocity[i] /= weights[i];
+                if (transferWeights[i] > 0.0f) {
+                    velocity[i] /= transferWeights[i];
                 }
             }
+
+            float *prevVelocity = axis == X_AXIS ? mac->prevVx : mac->prevVy;
+            int dx = axis == X_AXIS ? 1 : 0;
+            int dy = axis == X_AXIS ? 0 : 1;
 
             for (int x = 0; x < mac->size; x++) {
                 for (int y = 0; y < mac->size; y++) {
                     int index = mac->indexOf(x, y);
-                    if (component == 0) {
-                        bool solid = mac->isSolid(x, y) || (
-                                x > 0 &&
-                                mac->isSolid(x - 1, y)
-                            );
+                    bool solid = mac->isSolid(x, y) || (x - dx >= 0 && y - dy >= 0 && mac->isSolid(x - dx, y - dy));
 
-                        if (solid) velocity[index] = mac->prevVx[index];
-                    }
-                    else {
-                        bool solid = mac->isSolid(x, y) ||
-                            (
-                                y > 0 &&
-                                mac->isSolid(x, y - 1)
-                            );
-
-                        if (solid) velocity[index] = mac->prevVy[index];
-                    }
+                    if (solid) velocity[index] = prevVelocity[index];
                 }
             }
-
-            deleteFloatArray(weights);
         }
 
-        virtual void updateParticleDensity() {
+        void updateParticleDensity() {
             MacGrid *mac = (MacGrid*) grid;
-            const float h = mac->gridScale;
-            const float invSpacing = 1.0f / h;
+            const float gridCellSpacing = mac->gridScale;
+            const float pInvSpacing = 1.0f / gridCellSpacing;
 
             for (int i = 0; i < grid->volume(); i++) {
                 particleDensity[i] = 0.0f;
             }
 
-            // deposit particle density onto the MAC grid using bilinear interpolation
-            for (int i = 0; i < particles->size; i++) {
-                float x = particles->px[i];
-                float y = particles->py[i];
+            for (int p = 0; p < particles->size; p++) {
+                float x = particles->px[p];
+                float y = particles->py[p];
 
-                x = fsim::Clamp(x, h, (grid->size - 1) * h);
-                y = fsim::Clamp(y, h, (grid->size - 1) * h);
+                x = fsim::Clamp(x, gridCellSpacing, (grid->size - 1) * gridCellSpacing);
+                y = fsim::Clamp(y, gridCellSpacing, (grid->size - 1) * gridCellSpacing);
 
-                int x0 = fsim::Floor((x - 0.5f * h) * invSpacing);
-                float tx = ((x - 0.5f * h) - x0 * h) * invSpacing;
+                int x0 = fsim::Floor((x - 0.5f * gridCellSpacing) * pInvSpacing);
+                float tx = ((x - 0.5f * gridCellSpacing) - x0 * gridCellSpacing) * pInvSpacing;
                 int x1 = fsim::Min(x0 + 1, grid->size - 2);
 
-                int y0 = fsim::Floor((y - 0.5f * h) * invSpacing);
-                float ty = ((y - 0.5f * h) - y0 * h) * invSpacing;
+                int y0 = fsim::Floor((y - 0.5f * gridCellSpacing) * pInvSpacing);
+                float ty = ((y - 0.5f * gridCellSpacing) - y0 * gridCellSpacing) * pInvSpacing;
                 int y1 = fsim::Min(y0 + 1, grid->size - 2);
 
                 float sx = 1.0f - tx;
@@ -376,6 +363,8 @@ namespace fsim {
         }
 
         void updateParticleRestDensity() {
+            LOG("Updating particle rest density");
+
             MacGrid *mac = (MacGrid*) grid;
             float sum = 0.0f;
             int numFluidCells = 0;
@@ -392,54 +381,40 @@ namespace fsim {
                 }
             }
 
-            // particleRestDensity should be a constants
-            // start of the simulation might point to some invalid state
+            // could change particleRestDensity to a constant
             if (numFluidCells > 0) {
                 particleRestDensity = sum / numFluidCells;
             }
+
+            LOG(particleRestDensity);
         }
 
-
-        virtual void solvePressure(float time) {
+        void solvePressure(float time) {
             MacGrid *mac = (MacGrid*) grid;
-            int N = mac->size;
-            float pressureCorrection = mac->fluidDensity * mac->gridScale / time;
-
-            for (int i = 0; i < N*N; i++) mac->pressure[i] = 0.0f;
 
             runForNSteps(scene.iterations) {
-                for (int i = 1; i < N-1; i++) {
-                    for (int j = 1; j < N-1; j++) {
-                        if (!mac->isFluid(i, j)) continue;
+                for (int x = 1; x < mac->size-1; x++) {
+                    for (int y = 1; y < mac->size-1; y++) {
+                        if (!mac->isFluid(x, y)) continue;
 
-                        float sx0 = mac->isSolid(i-1, j) ? 0.0f : 1.0f;
-                        float sx1 = mac->isSolid(i+1, j) ? 0.0f : 1.0f;
-                        float sy0 = mac->isSolid(i, j-1) ? 0.0f : 1.0f;
-                        float sy1 = mac->isSolid(i, j+1) ? 0.0f : 1.0f;
-                        float s   = sx0 + sx1 + sy0 + sy1;
+                        float sx0 = mac->isSolid(x-1, y) ? 0.0f : 1.0f;
+                        float sx1 = mac->isSolid(x+1, y) ? 0.0f : 1.0f;
+                        float sy0 = mac->isSolid(x, y-1) ? 0.0f : 1.0f;
+                        float sy1 = mac->isSolid(x, y+1) ? 0.0f : 1.0f;
+                        float s = sx0 + sx1 + sy0 + sy1;
                         if (s == 0.0f) continue;
 
-                        float div = mac->divergence(i, j);
+                        float divergence = mac->divergence(x, y);
 
-                        if (particleRestDensity > 0.0) {
-                            float compression =
-                                particleDensity[mac->indexOf(i, j)] - particleRestDensity;
+                        int index = mac->indexOf(x, y);
+                        divergence = compensateDrift(divergence, particleDensity[index]);
 
-                            if (compression > 0.0f) {
-                                div -= compression;
-                            }
-                        }
+                        float pressureDelta = -divergence / s * scene.overRelaxation;
 
-                        float pressureDelta = -div / s * scene.overRelaxation;
-                        // likely unused and can be removed
-                        // compare with other pressure solvers
-                        mac->pressure[mac->indexOf(i, j)] += pressureCorrection * pressureDelta;
-
-                        // likely pressureCorrection not needed either?
-                        mac->Vx[mac->indexOf(i,   j)] -= sx0 * pressureDelta;
-                        mac->Vx[mac->indexOf(i+1, j)] += sx1 * pressureDelta;
-                        mac->Vy[mac->indexOf(i, j  )] -= sy0 * pressureDelta;
-                        mac->Vy[mac->indexOf(i, j+1)] += sy1 * pressureDelta;
+                        mac->Vx[index] -= sx0 * pressureDelta;
+                        mac->Vx[mac->indexOf(x+1, y)] += sx1 * pressureDelta;
+                        mac->Vy[index] -= sy0 * pressureDelta;
+                        mac->Vy[mac->indexOf(x, y+1)] += sy1 * pressureDelta;
                     }
                 }
             }

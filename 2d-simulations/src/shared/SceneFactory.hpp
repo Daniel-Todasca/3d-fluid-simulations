@@ -17,11 +17,11 @@ namespace fsim {
             scene.minDensityClass = 0.1f;
             scene.cubeSize = 64;
             scene.waterSharpenThreshold = 0.8f;
-            scene.numParticles = 5000;
+            scene.numParticles = 1000;
             scene.particleRadius = 1.5f;
             scene.width = 300;
             scene.height = 300;
-            scene.pushParticlesIter = 4;
+            scene.pushParticlesIter = 40;
             scene.flipRatio = 0.8f;
             scene.particleCollisionDamping = 0.0f;
             scene.seed = 0;

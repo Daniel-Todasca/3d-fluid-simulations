@@ -7,7 +7,7 @@ namespace fsim {
     
     class FluidCube {
     public:
-        inline float volume() {
+        inline int volume() {
             return size * size;
         }
 

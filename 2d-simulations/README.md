@@ -7,6 +7,5 @@ g++.exe -o out\main.exe src\main.cpp -I"$env:GLFW\include" -L"$env:GLFW\lib-ming
 2. Use Poisson instead of Gauss-Seidel
 3. Integrate viscosity
 4. Create IGrid
-5. Cleanup FlipSimulation
 6. New images
 7. Better debugging
