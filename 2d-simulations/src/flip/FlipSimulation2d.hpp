@@ -4,6 +4,7 @@
 #include "ParticleCollection.hpp"
 #include "../stable-fluids/FluidCube.hpp"
 #include "MacGrid.hpp"
+#include "PushParticlesSolver.hpp"
 #include "../shared/Scene.hpp"
 #include "../defines.hpp"
 #include "../shared/Maths.hpp"
@@ -15,18 +16,13 @@ namespace fsim {
             this->grid = grid;
             this->particles = particles;
             this->scene = scene;
-            this->numCellParticles = nullptr;
-            this->firstCellParticles = nullptr;
-            this->cellParticleIds = nullptr;
         }
 
         ~FlipSimulation2d() {
             if (grid) delete grid;
             if (particles) delete particles;
 
-            if (numCellParticles) deleteIntArray(numCellParticles);
-            if (firstCellParticles) deleteIntArray(firstCellParticles);
-            if (cellParticleIds) deleteIntArray(cellParticleIds);
+            if (pushSolver) delete pushSolver;
             if (particleDensity) deleteFloatArray(particleDensity);
             if (transferWeights) deleteFloatArray(transferWeights);
         }
@@ -34,6 +30,7 @@ namespace fsim {
         virtual void step() override {
             if (!particleDensity) particleDensity = makeFloatArray(((int)grid->volume()));
             if (!transferWeights) transferWeights = makeFloatArray(((int)grid->volume()));
+            if (!pushSolver) pushSolver = new PushParticlesSolver(scene.particleRadius, scene.width, scene.height);
 
             applyGravity(grid->time_step * this->timeSpeedUp);
             transferVelocitiesToGrid();
@@ -56,8 +53,8 @@ namespace fsim {
         Scene scene;
         FluidCube *grid;
         ParticleCollection *particles;
+        PushParticlesSolver *pushSolver = nullptr;
 
-        int *numCellParticles, *firstCellParticles, *cellParticleIds, *cellType;
         float *particleDensity = nullptr, *transferWeights = nullptr;
 
         float particleRestDensity = 0, timeSpeedUp = 10.0f, mass = 50.0f;
@@ -103,98 +100,12 @@ namespace fsim {
         }
 
         void pushParticles() {
-            // not dependent on time
-            float pInvSpacing = 1.0f / (2.2f * scene.particleRadius);
-            int pNumX = floorf(scene.width * pInvSpacing) + 1;
-            int pNumY = floorf(scene.height * pInvSpacing) + 1;
-            int numCells = pNumX * pNumY;
-            
-            if (!numCellParticles) numCellParticles = makeIntArray(numCells); // number of particles per cell
-            if (!firstCellParticles) firstCellParticles = makeIntArray(numCells+1); // partial sums
-            if (!cellParticleIds) cellParticleIds = makeIntArray(particles->size);  // from grid to particle
-
-            for (int i=0; i < numCells; i++) {
-                numCellParticles[i] = 0;
-            }
-
-            for (int i=0; i < particles->size; i++) {
-                float x = particles->px[i];
-                float y = particles->py[i];
-
-                int cellX = fsim::Clamp((int) floorf(x * pInvSpacing), 0, pNumX - 1);
-                int cellY = fsim::Clamp((int) floorf(y * pInvSpacing), 0, pNumY - 1);
-                int cellNum = cellX * pNumY + cellY;
-                numCellParticles[cellNum] ++;
-            }
-
-            int partialSum = 0;
-            for (int i=0; i < numCells; i++) {
-                partialSum += numCellParticles[i];
-                firstCellParticles[i] = partialSum;
-            }
-            firstCellParticles[numCells] = partialSum;
-
-            for (int i=0; i < particles->size; i++) {
-                float x = particles->px[i];
-                float y = particles->py[i];
-
-                int cellX = fsim::Clamp((int) floorf(x * pInvSpacing), 0, pNumX - 1);
-                int cellY = fsim::Clamp((int) floorf(y * pInvSpacing), 0, pNumY - 1);
-                int cellNum = cellX * pNumY + cellY;
-
-                firstCellParticles[cellNum] --;
-                cellParticleIds[firstCellParticles[cellNum]] = i;
-            }
-
-            float minDist = 2.0f * scene.particleRadius;
-            float minDistSq = minDist * minDist;
-
-            // bigger pushParticlesIter mean more consecutive particles will get effected, like ripples
-            runForNSteps(scene.pushParticlesIter) {
-                for (int p = 0; p < particles->size; p++) {
-                    float px = particles->px[p];
-                    float py = particles->py[p];
-                    
-                    int onGridX = (int) floorf(px * pInvSpacing);
-                    int onGridY = (int) floorf(py * pInvSpacing);
-
-                    int x0 = fsim::Max(onGridX-1, 0);
-                    int y0 = fsim::Max(onGridY-1, 0);
-                    int x1 = fsim::Min(onGridX+1, pNumX-1);
-                    int y1 = fsim::Min(onGridY+1, pNumY-1);
-
-                    for (int x = x0; x <= x1; x++) {
-                        for (int y = y0; y <= y1; y++) {
-                            int cellNum = x * pNumY + y;
-                            int first = firstCellParticles[cellNum];
-                            int last = firstCellParticles[cellNum+1];
-
-                            for (int i=first; i<last; i++) {
-                                int particleId = cellParticleIds[i];
-                                if (particleId == p) continue;
-                                float dx = particles->px[particleId] - px;
-                                float dy = particles->py[particleId] - py;
-                                float distSq = dx * dx + dy * dy;
-                                if (distSq == 0 || distSq > minDistSq) continue;
-
-                                float dist = fsim::Sqrt(distSq);
-                                float scale = 0.5f * (minDist - dist) / dist;
-                                dx *= scale;
-                                dy *= scale;
-                                particles->px[p] -= dx;
-                                particles->py[p] -= dy;
-                                particles->px[particleId] += dx;
-                                particles->py[particleId] += dy;
-                            }
-                        }
-                    }
-                    
-                }
-            }
+            // notice it is not dependent on time
+            pushSolver->solve(particles, scene.pushParticlesIter);
         }
 
         void handleParticleCollisions() {
-            // not dependent on time
+            // notice it is not dependent on time
             MacGrid *mac = (MacGrid*) grid;
             const float gridCellSpacing = mac->gridScale;
 
